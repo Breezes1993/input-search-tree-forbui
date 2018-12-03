@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<meta charset="utf-8">
+		<title>修改节点图标</title>
+
+		<link href="http://g.alicdn.com/bui/bui/1.1.21/css/bs3/dpl.css" rel="stylesheet">
+		<link href="http://g.alicdn.com/bui/bui/1.1.21/css/bs3/bui.css" rel="stylesheet">
+		<script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+		<style>
+			.tree-body {
+				min-height: 40px;
+				height: 100px;
+				max-width: 300px;
+				min-width: 200px;
+			}
+			.empty-class {}
+		</style>
+
+	</head>
+
+	<body>
+		<input type="text" id="test" style="margin: 20px;" />
+		<h2>点击的节点</h2>
+		<div class="log well" id="log"></div>
+
+		<script src="http://g.tbcdn.cn/fi/bui/jquery-1.8.1.min.js"></script>
+		<script src="http://g.alicdn.com/bui/seajs/2.3.0/sea.js"></script>
+		<script src="http://g.alicdn.com/bui/bui/1.1.21/config.js"></script>
+
+		<script type="text/javascript">
+			let tree = '';
+			var dataOrg = [{
+					text: '1',
+					id: '1',
+					children: [{
+						text: '11',
+						id: '11'
+					}]
+				},
+				{
+					text: '2',
+					id: '2',
+					expanded: true,
+					children: [{
+							text: '21',
+							id: '21',
+							children: [{
+								text: '211',
+								id: '211'
+							}, {
+								text: '21222222222222222222222222222222222222222222222222222222222',
+								id: '212',
+								children: [{
+										text: '2121',
+										id: '2121',
+										children: [{
+											text: '21211',
+											id: '212111'
+										}, {
+											text: '21222222222222222222222222222222222222222222222222222222222',
+											id: '212112'
+										}]
+									},
+									{
+										text: '2122',
+										id: '2122'
+									}
+								]
+							}]
+						},
+						{
+							text: '22',
+							id: '22'
+						}
+					]
+				},
+				{
+					text: '3',
+					id: '3',
+					children: [{
+						text: '31',
+						id: '31'
+					}]
+				},
+				{
+					text: '4',
+					id: '4',
+					children: [{
+						text: '41',
+						id: '41'
+					}, {
+						text: '42',
+						id: '42'
+					}]
+				}
+			];
+
+			var SearchTree = function(obj) {
+				var dataOrg = obj.dataOrg,
+					treeCntId = "_selectTree",
+					treeCntIdSelect = "#_selectTree",
+					treeId = "_treeId",
+					treeIdSelect = "#_treeId",
+					inputId = "#" + obj.inputId,
+					treeValId = "_treeVal",
+					treeValIdSelect = "#_treeVal";
+				var onChange = function() {};
+				var data = dataOrg.concat();
+				var dataSelect = [];
+				var inputTo = 0;
+
+				function initTree(isInit) {
+					isInit && $("body").append('' +
+						'<div id="' + treeCntId + '" class="row" style="display:none;position:relative;">' +
+						'<div id="' + treeId + '">' +
+						'</div>' +
+						'<input type="hidden" id="' + treeValId + '"/>' +
+						'</div>');
+					BUI.use('bui/tree', function(Tree) {
+						//树节点数据，
+						//text : 文本，
+						//id : 节点的id,
+						//leaf ：标示是否叶子节点，可以不提供，根据childern,是否为空判断
+						//expanded ： 是否默认展开
+						//checked : 节点是否默认选中
+						//由于这个树，不显示根节点，所以可以不指定根节点
+						tree = new Tree.TreeList({
+							render: treeIdSelect,
+							nodes: data,
+							checkType: 'all', //checkType:勾选模式，提供了4中，all,onlyLeaf,none,custom
+							cascadeCheckd: false, //不级联勾选
+							showLine: true //显示连接线
+						});
+						tree.render();
+
+						tree.on('checkedchange', function(ev) {
+							var checkedNodes = tree.getCheckedNodes();
+							var checkedList = [];
+							BUI.each(checkedNodes, function(node) {
+								checkedList.push(node.id);
+							});
+							dataSelect = checkedList;
+							$(treeValIdSelect).val(dataSelect);
+							onChange(dataSelect);
+						});
+						dataSelect.forEach(function(id) {
+							var node = tree.findNode(id);
+							tree.setNodeChecked(node, true);
+						});
+						$(treeIdSelect).children("div").addClass(obj.treeBodyClass);
+						if(data && data.length === 0) {
+							$(treeValIdSelect).val([]);
+							onChange([]);
+							$(treeIdSelect).children("div").append('' +
+								'<div style="padding:10px;" class="' + obj.emptyCntClass + '">' +
+								'<span>暂无数据</span>' +
+								'</div>');
+						}
+					});
+				}
+				initTree(true);
+				$(inputId).focus(function() {
+					var selectTreeEl = $(treeCntIdSelect);
+					var thisEl = $(this);
+					var offset = thisEl.offset();
+					selectTreeEl.show();
+					selectTreeEl.css("position", "absolute");
+					selectTreeEl.css("top", offset.top + thisEl.innerHeight());
+					selectTreeEl.css("left", offset.left + 10);
+				});
+				$(inputId).blur(function() {
+					$(treeCntIdSelect).hide();
+				});
+				$(inputId).bind('input propertychange', function() {
+					var thisEl = $(this);
+					var val = thisEl.val();
+					clearTimeout(inputTo);
+					inputTo = setTimeout(function() {
+						function matchKey(obj) {
+							if(obj instanceof Array) {
+								var newDatas = [];
+								dataOrg.forEach(function(item) {
+									var newData = matchKey(item);
+									newData && newDatas.push(newData);
+								});
+								return newDatas;
+							} else if(obj.children) {
+								let tmpObj = [];
+								let copyObj = JSON.parse(JSON.stringify(obj));
+								obj.children.forEach(function(childrenItem, childrenIndex) {
+									var childrenData = matchKey(childrenItem);
+									childrenData && tmpObj.push(childrenData);
+								});
+								copyObj.children = tmpObj;
+								if(obj.text.indexOf(val) === -1) {
+									if(copyObj.children.length > 0) {
+										return copyObj;
+									} else {
+										delete copyObj.children;
+									}
+								} else {
+									return copyObj;
+								}
+							} else {
+								if(obj.text.indexOf(val) === -1) {} else {
+									return obj;
+								}
+							}
+						};
+						data = matchKey(dataOrg);
+						tree.destroy();
+						initTree();
+					}, 200);
+				});
+				$(treeCntIdSelect).mousedown(function(e) {
+					if(e && e.preventDefault)
+						e.preventDefault();
+					//IE阻止默认事件
+					else
+						window.event.returnValue = false;
+					return false;
+				});
+				return {
+					on: function(key, fuc) {
+						switch(key) {
+							case("change"):
+								onChange = fuc;
+								break;
+						}
+					},
+					getVal: function() {
+						return $(treeValIdSelect).val();
+					}
+				}
+			}
+			var searchTree = new SearchTree({
+				dataOrg: dataOrg, // 原始数据
+				inputId: "test", // 输入框的id
+				emptyCntClass: "empty-class", //当数据为空的时候，div的样式
+				treeBodyClass: "tree-body" // 树的样式，修改宽高之类的
+			});
+			/**
+			 * 当树选中的值变化时触发
+			 */
+			searchTree.on("change", function(checkedList) {
+				console.log(checkedList);
+				//				console.log(searchTree.getVal()); // 获取当前树的选中值
+			});
+			var log = console.log;
+			console.log = function(msg) {
+				log(msg);
+				$("#log").append('<p>' + ((msg instanceof Array) ? msg.join(",") : (typeof msg === 'object' ? JSON.stringify(msg) : msg)) + '</p>')
+			}
+		</script>
+		</div>
+	</body>
+
+</html>
